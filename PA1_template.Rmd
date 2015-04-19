@@ -1,25 +1,135 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
+title: "Reproducible Research Course Project 1"
+author: "JPV"
+date: "Sunday, April 19, 2015"
+output:
   html_document:
-    keep_md: true
+    keep_md: yes
 ---
 
+###Analysis 1 : Mean Total Number of steps taken per day (with missing values). 
 
-## Loading and preprocessing the data
+```{r}
+raw_data<-read.csv("activity.csv",header=T,sep=",")
+day_aggr<-aggregate(steps~date, data=raw_data, sum)
+summary(day_aggr)
+median_value<-as.integer(median(day_aggr$steps))
+mean_value<-as.integer(mean(day_aggr$steps))
+```
+
+**The mean and median for the number of steps taken per day is `r mean_value` and  `r median_value` respectively.**
+
+Here is the histogram showing frequency of number of stes per day shown below :
+
+```{r, echo=TRUE}
+hist(day_aggr$steps, xlab="Number of steps per day" ,main="Histogram (with missing values)",col="yellow")
+```
+
+### Analysis 2 : Average daily activity pattern Analysis (with missing values)
+
+```{r,echo=TRUE}
+int_aggr<-aggregate(steps~interval, data=raw_data, mean)
+plot(int_aggr$interval,int_aggr$steps, type="l",col="blue", xlab="Time Interval",ylab="No. of steps",main="Average daily activity pattern Analysis (with missing values)")
+```
+
+**Interval (5 mins) with maximum number of average steps shown below;**
+
+```{r, echo=TRUE}
+int_aggr[which.max(int_aggr$steps),]
+```
+
+### Analysis 3: Missing values (NA's) in the data set
+
+```{r,echo=TRUE}
+Total_rows<-nrow(raw_data)
+steps_NA<-nrow(raw_data[is.na(raw_data$steps),])
+date_NA<-nrow(raw_data[is.na(raw_data$date),])
+interval_NA<-nrow(raw_data[is.na(raw_data$interval),])
+```
+Number of records in the raw data  : `r Total_rows`
+
+Missing values for "steps" column : `r steps_NA`
+
+Missing values for "date" column  : `r date_NA`
+
+Missing values for "interval" column  : `r interval_NA`
+
+### Imputing missing values strategy:
+
+Strategy - Missing values for "steps" has been replaced with average value for the day and interval combination.
+
+``` {r,echo=TRUE}
+raw_data_No_NA<-raw_data[!is.na(raw_data$steps),]
+NA_data<-raw_data[is.na(raw_data$steps),]
+NA_data_merge<-merge(NA_data,int_aggr,by="interval")
+names(NA_data_merge)[4]<-paste("steps")
+NA_data_impute<-NA_data_merge[,c(4,3,1)]
+clean_data<-rbind (raw_data_No_NA,NA_data_impute)
+clean_data_day_aggr<-aggregate(steps~date, data=clean_data, sum)
+```
+
+Cleaned data is then aggregated at day level to perform Analysis 1 for imputed missing values
 
 
+### Analysis 4 : Repeat Analysis 1 with the dataset with imputed missing values
 
-## What is mean total number of steps taken per day?
+``` {r,echo=TRUE}
+summary(clean_data_day_aggr)
+median_value_clean<-as.integer(median(clean_data_day_aggr$steps))
+mean_value_clean <-as.integer(mean(clean_data_day_aggr$steps))
+hist(clean_data_day_aggr$steps, xlab="Number of steps per day" ,main="Histogram (After imputing missing values)",col="green")
+```
+
+**After replacing missing values with day/interval average, the mean and median are `r mean_value_clean` and  `r median_value_clean` respectively.**
 
 
+Do these values differ from the estimates from the first part of the assignment?
 
-## What is the average daily activity pattern?
+- Yes. Mean and median values are same after imputing missing values.
+
+What is the impact of imputing missing data on the estimates of the total daily number of steps ?
+
+- After imputing, median and mean are close to each other (infact they are equal after imputing). This indicates that the imputing strategy followed in the analysis is good. 
 
 
+### Analysis 5 : Are there differences in activity patterns between wwekdays and weekends ?
 
-## Imputing missing values
+```{r,echo=TRUE}
 
+library(ggplot2)
 
+day <- weekdays(as.Date(clean_data$date))
+dayofweek <- vector()
+for (i in 1:nrow(clean_data)) {
+  if (day[i] == "Saturday") {
+    dayofweek[i] <- "Weekend"
+  } else if (day[i] == "Sunday") {
+    dayofweek[i] <- "Weekend"
+  } else {
+    dayofweek[i] <- "Weekday"
+  }
+}
+clean_data$dayofweek <- dayofweek
+clean_data$dayofweek <- factor(clean_data$dayofweek)
 
-## Are there differences in activity patterns between weekdays and weekends?
+steps_day <- aggregate(steps ~ interval + dayofweek, data = clean_data, mean)
+names(steps_day) <- c("interval", "dayofweek", "steps")
+
+ggplot(steps_day, aes(x=interval, y=steps)) + 
+  geom_line(color="blue") + 
+  facet_wrap(~ dayofweek, nrow=2, ncol=1) +
+  labs(x="Interval", y="Number of steps")  
+
+```
+
+From the above plots, we can infer following points:
+
+1.  Activities on a typical weekday is more or less routine except for a spike during noon (probably due to gym or sporting activities during the period). 
+
+2.  Weekends are more active than week days and the efforts are distributed evenly.
+
+ 
+ 
+
+----------------------------------------------------------- End of Report -----------------------------------------------------------------
+
